@@ -8,30 +8,27 @@
 import re
 import socket
 import datetime
-import urllib2
+from requests import Session
 from optparse import OptionParser
 
-def requestProxy():
-    content="ac=on" # All countries
-    content+="&p=" # All ports
-    content+="&pr[]=0&pr[]=1&pr[]=2" # Protocols: HTTP, HTTPS, SOCK4/5
-    content+="&a[]=1&a[]=2&a[]=3&a[]=4" # Anonymity Level:Low, Medium, High, High+KA
-    content+="&sp[]=1&sp[]=2&sp[]=3" # Speed: Slow, Medium, Fast
-    content+="&ct[]=1&ct[]=2&ct[]=3" # Connection time: slow, medium, fast
-    content+="&s=0&o=0&pp=3&sortBy=date" # Sortby: Date
 
-    length=len(content)
+def request_proxy(session=Session()):
+    post_data = {
+        'ac': 'on',  # All countries
+        'p': '',  # All ports
+        'pr[]': [0, 1, 2],  # Protocols: HTTP, HTTPS, SOCK4/5
+        'a[]': [1, 2, 3, 4],  # Anonymity Level:Low, Medium, High, High+KA
+        'sp[]': [1, 2, 3],  # Speed: Slow, Medium, Fast
+        's': 0, 'o': 0, 'pp': 3, 'sortBy': 'date',  # Sort by: Date
+    }
 
-    request=urllib2.Request("http://hidemyass.com/proxy-list/")
-    request.add_header("User-Agent", "Proxist 1.0")
-    request.add_header("Connection", "keep-alive")
-    request.add_header("Content-Type", "application/x-www-form-urlencoded")
-    request.add_header("Content-Length", str(length))
+    response = session.post(
+        url="http://hidemyass.com/proxy-list/",
+        data=post_data,
+        headers={'User-Agent': 'Proxist 1.0'}
+    )
+    return response.text
 
-    request.data=content
-
-    response=urllib2.urlopen(request)
-    return response.read()
 
 def testConnection(ip, port):
     socket.setdefaulttimeout(10)
@@ -47,7 +44,7 @@ def testConnection(ip, port):
         requestTime=datetime.datetime.now() # get date and time
         requestTime=requestTime.timetuple() # store date and time in tuple
         # time.hour*3600+time.minute*60+time.second
-        requestTime=requestTime[3]*3600+requestTime[4]*60+requestTime[5] 
+        requestTime=requestTime[3]*3600+requestTime[4]*60+requestTime[5]
         http.send(request)
 
         response=http.recv(65535)
@@ -166,7 +163,8 @@ def main():
     saveall=options.saveall
 
     # Request page
-    html=requestProxy()
+    session=Session()
+    html=request_proxy(session)
 
     # will contain the index of start of every proxy table
     index=[]
