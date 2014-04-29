@@ -37,31 +37,31 @@ def request_proxy_pages(session=Session()):
         yield document
 
 
-def strip_tags(value):
-    return re.sub('<[^>]*?>', '', value).strip()
+def strip_tags(raw_html):
+    return re.sub('<[^>]*?>', '', raw_html).strip()
 
 
-def strip_updates(updates_raw):
-    raw_time = strip_tags(updates_raw)
+def strip_updates(raw_updates):
+    raw_time = strip_tags(raw_updates)
     if 'now' in raw_time:
         raw_time = re.sub(r'now', '0s', raw_time)
     elif 'sec' in raw_time:
-        raw_time = re.sub(r'\ssec(s)?', 's', raw_time)
+        raw_time = re.sub(r' sec(s)?', 's', raw_time)
     else:
-        raw_time = re.sub(r'\sminute(s)?', 'm', raw_time)
-        raw_time = re.sub(r'\shour(s)?', 'h', raw_time)
-        raw_time = re.sub(r'\sand', '', raw_time)
+        raw_time = re.sub(r' minute(s)?', 'm', raw_time)
+        raw_time = re.sub(r' hour(s)?', 'h', raw_time)
+        raw_time = re.sub(r' and', '', raw_time)
     return raw_time
 
 
-def strip_ip(ip_raw):
+def strip_ip(raw_ip):
     # Strip Style
     style = re.search(
         '<style>(?P<style>.*?)</style>',
-        ip_raw,
+        raw_ip,
         flags=re.DOTALL
     ).group('style')
-    ip = re.sub(style, '', ip_raw)
+    ip = re.sub(style, '', raw_ip)
 
     # Strip Hidden Classes
     hidden_classes = re.findall('\.(.*?)\{display:none}', style)
@@ -69,14 +69,13 @@ def strip_ip(ip_raw):
         ip = re.sub('<[^>]*?class="%s">\w+</[^>]*?>' % hidden_class, "", ip)
 
     # Strip Hidden Styles
-    ip = re.sub('<[^>]*?style="display:none">(\w+)</[^>]*?>', "", ip)
-    return strip_tags(ip)
+    return strip_tags(re.sub('<[^>]*?style="display:none">(\w+)</[^>]*?>', "", ip))
 
 
-def strip_percentage(ip_raw):
+def strip_percentage(raw_percentage):
     percentage_dict = re.search(
         '<div class="(?P<type>\w+)" style="width:(?P<num>\d+)%"> </div>',
-        ip_raw,
+        raw_percentage,
         flags=re.DOTALL
     ).groupdict()
     percentage_dict['num'] = int(percentage_dict['num']) / 10.0
