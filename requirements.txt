@@ -1,5 +1,3 @@
 lxml
-requests
-termcolor
-colorama
-prettytable
+docopt
+git+git://github.com/realgam3/grequesocks
