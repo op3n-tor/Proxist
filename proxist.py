@@ -70,13 +70,13 @@ def start_logging(logger=LOGGER, debug=False, output_file=None):
 def request_proxy_pages(session=grequesocks.requesocks.Session()):
     session.headers.update({'User-Agent': 'Proxist %s' % __version__})
 
-    page = '/proxy-list/1'
+    page = '/1'
     while True:
         response = session.get(
-            url=urljoin("http://hidemyass.com/", page)
+            url=urljoin("http://proxylist.hidemyass.com/", page)
         )
         document = html.fromstring(response.content)
-        next_page = document.find_class('next')
+        next_page = document.xpath("//a[@class='next']")
         if not next_page:
             break
 
@@ -157,7 +157,7 @@ def response_callback(res, *args, **kwargs):
 
 def get_proxy_requests():
     for html_page in request_proxy_pages():
-        for tr in html_page.xpath("//table[@id='listtable']/tr"):
+        for tr in html_page.xpath("//table[@id='listable']/tbody/tr"):
             raw_properties = dict(
                 zip(
                     ('updates', 'ip', 'port', 'country', 'speed', 'connection time', 'type', 'anonymity'),
