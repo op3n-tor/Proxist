@@ -78,6 +78,7 @@ def request_proxy_pages(session=grequesocks.requesocks.Session()):
         document = html.fromstring(response.content)
         next_page = document.xpath("//a[@class='next']")
         if not next_page:
+            yield document
             break
 
         page = next_page[0].attrib['href']
