@@ -1,43 +1,40 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#=========================================================#
-# [+] Title: Hide My Ass Proxy Grabber - Proxist 1.0      #
-# [+] Script: proxist.py                                  #
-# [+] Blog: http://pytesting.blogspot.com                 #
-#=========================================================#
+# =========================================================#
+# [+] Title: Hide My Ass Proxy Grabber - Proxist 1.1       #
+# [+] Script: proxist.py                                   #
+# [+] Blog: http://pytesting.blogspot.com                  #
+# =========================================================#
 
 import re
 import json
 import logging
-import grequesocks
+import grequests
 from os import path
 from lxml import html
 from docopt import docopt
 from sys import stdout, argv
 from urlparse import urljoin
-from datetime import datetime
-from base64 import b64encode, b64decode
-
 
 # Global Variables
-__version__ = 1.0
+__version__ = 1.1
 __doc__ = \
-"""
-Proxist {version}
+    """
+    Proxist {version}
 
-Usage:
-  {app} [--output=<output_path> --debug]
-  {app} (-h | --help)
-  {app} (-v | --version)
+    Usage:
+      {app} [--output=<output_path> --debug]
+      {app} (-h | --help)
+      {app} (-v | --version)
 
-Options:
-  -h --help               Show this screen.
-  -v --version            Show version.
-  --output=<output_path>  Output File Path.
-  --debug                 Debug Mode.
-""".format(app=path.basename(argv[0]),
-           version=__version__)
-LOGGER = logging.getLogger('DailyLogger')
+    Options:
+      -h --help               Show this screen.
+      -v --version            Show version.
+      --output=<output_path>  Output File Path.
+      --debug                 Debug Mode.
+    """.format(app=path.basename(argv[0]),
+               version=__version__)
+LOGGER = logging.getLogger('Proxist')
 DEBUG_MODE = False
 
 
@@ -67,7 +64,7 @@ def start_logging(logger=LOGGER, debug=False, output_file=None):
     return logger
 
 
-def request_proxy_pages(session=grequesocks.requesocks.Session()):
+def request_proxy_pages(session=grequests.Session()):
     session.headers.update({'User-Agent': 'Proxist %s' % __version__})
 
     page = '/1'
@@ -128,32 +125,27 @@ def get_proxies_dict(raw_ip, raw_port, raw_type):
     }
 
 
-def request_callback(req, *args, **kwargs):
-    req.start_time = datetime.now()
+def exception_handler(request, error):
+    LOGGER.debug(
+        "Request={request}, Error={error}".format(
+            request=request,
+            error=error
+        )
+    )
 
 
 def response_callback(res, *args, **kwargs):
-    if not isinstance(res, Exception):
-        res.elapsed = datetime.now() - res.request.start_time
-        result = json.loads(b64decode(res.request.path_url.split('#')[1]))
-        result['Response Time'] = res.elapsed.total_seconds()
+    result = res.json()['args']
+    result['Response Time'] = res.elapsed.total_seconds()
 
-        if res.ok:
-            indent = 4
-            if DEBUG_MODE:
-                indent = None
-            LOGGER.info(json.dumps(result, indent=indent))
-        else:
-            result['Status Code'] = res.status_code
-            LOGGER.debug(json.dumps(result))
+    if res.ok:
+        indent = 4
+        if DEBUG_MODE:
+            indent = None
+        LOGGER.info(json.dumps(result, indent=indent))
     else:
-        LOGGER.debug(
-            "Exception={error}, Args={args}, Kwargs={kwargs}".format(
-                error=res,
-                args=args,
-                kwargs=kwargs
-            )
-        )
+        result['Status Code'] = res.status_code
+        LOGGER.debug(json.dumps(result))
 
 
 def get_proxy_requests():
@@ -167,21 +159,17 @@ def get_proxy_requests():
             )
             proxy = get_proxies_dict(raw_properties['ip'], raw_properties['port'], raw_properties['type'])
             http_type, proxy_url = proxy.items()[0]
-            properties = {
-                'Proxy': proxy_url,
-                'Country': strip_tags(raw_properties['country']),
-                'Anonymity': strip_tags(raw_properties['anonymity'])
-            }
-            yield grequesocks.get(
-                '{http_type}://httpbin.org/get#{location_hash}'.format(
-                    location_hash=b64encode(json.dumps(properties)),
-                    http_type=http_type
-                ),
+            yield grequests.get(
+                '%s://httpbin.org/get' % http_type,
+                params={
+                    'Proxy': proxy_url,
+                    'Country': strip_tags(raw_properties['country']),
+                    'Anonymity': strip_tags(raw_properties['anonymity'])
+                },
                 proxies=proxy,
                 verify=False,
                 hooks={
-                    'pre_request': request_callback,
-                    'response':  response_callback
+                    'response': response_callback
                 }
             )
 
@@ -191,4 +179,4 @@ if __name__ == '__main__':
     start_logging(output_file=arguments['--output'], debug=arguments['--debug'])
 
     DEBUG_MODE = arguments['--debug']
-    grequesocks.map(get_proxy_requests(), size=50)
+    grequests.map(get_proxy_requests(), size=50, exception_handler=exception_handler)

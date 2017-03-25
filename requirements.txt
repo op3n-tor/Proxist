@@ -1,3 +1,4 @@
-lxml
-docopt
-git+git://github.com/realgam3/grequesocks
+lxml >= 3.6.0
+docopt >= 0.6.2
+PySocks >= 1.6.7
+grequests >= 0.3.0
